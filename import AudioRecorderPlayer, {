@@ -1,0 +1,138 @@
+import AudioRecorderPlayer, {
+  AVEncoderAudioQualityIOSType,
+  AVEncodingOption,
+  AudioEncoderAndroidType,
+  AudioSet,
+  AudioSourceAndroidType,
+  PlayBackType,
+  RecordBackType,
+} from 'react-native-audio-recorder-player';
+import {
+  Dimensions,
+  PermissionsAndroid,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Button,
+
+} from 'react-native';
+import React, { Component } from 'react';
+
+const screenWidth = Dimensions.get('screen').width;
+
+class App extends Component<any, State> {
+  private path = Platform.select({
+    ios: 'hello.m4a',
+  });
+
+  private audioRecorderPlayer: AudioRecorderPlayer;
+
+  constructor(props: any) {
+    super(props);
+    this.state = {
+      isLoggingIn: false,
+      recordSecs: 0,
+      recordTime: '00:00:00',
+      currentPositionSec: 0,
+      currentDurationSec: 0,
+      playTime: '00:00:00',
+      duration: '00:00:00',
+    };
+
+    this.audioRecorderPlayer = new AudioRecorderPlayer();
+    this.audioRecorderPlayer.setSubscriptionDuration(0.1); // optional. Default is 0.5
+  }
+
+  public render() {
+    let playWidth =
+      (this.state.currentPositionSec / this.state.currentDurationSec) *
+      (screenWidth - 56);
+
+    if (!playWidth) {
+      playWidth = 0;
+    }
+
+    
+  }
+
+  private onStatusPress = (e: any) => {
+    const touchX = e.nativeEvent.locationX;
+    console.log(`touchX: ${touchX}`);
+    const playWidth =
+      (this.state.currentPositionSec / this.state.currentDurationSec) *
+      (screenWidth - 56);
+    console.log(`currentPlayWidth: ${playWidth}`);
+
+    const currentPosition = Math.round(this.state.currentPositionSec);
+    console.log(`currentPosition: ${currentPosition}`);
+
+    if (playWidth && playWidth < touchX) {
+      const addSecs = Math.round(currentPosition + 1000);
+      this.audioRecorderPlayer.seekToPlayer(addSecs);
+      console.log(`addSecs: ${addSecs}`);
+    } else {
+      const subSecs = Math.round(currentPosition - 1000);
+      this.audioRecorderPlayer.seekToPlayer(subSecs);
+      console.log(`subSecs: ${subSecs}`);
+    }
+  };
+
+  private onStartRecord = async () => {
+
+    const audioSet: AudioSet = {
+      AudioEncoderAndroid: AudioEncoderAndroidType.AAC,
+      AudioSourceAndroid: AudioSourceAndroidType.MIC,
+      AVEncoderAudioQualityKeyIOS: AVEncoderAudioQualityIOSType.high,
+      AVNumberOfChannelsKeyIOS: 2,
+      AVFormatIDKeyIOS: AVEncodingOption.aac,
+    };
+
+    console.log('audioSet', audioSet);
+    //? Custom path
+    // const uri = await this.audioRecorderPlayer.startRecorder(
+    //   this.path,
+    //   audioSet,
+    // );
+
+    //? Default path
+    const uri = await this.audioRecorderPlayer.startRecorder(
+      undefined,
+      audioSet,
+    );
+
+    this.audioRecorderPlayer.addRecordBackListener((e: RecordBackType) => {
+      console.log('record-back', e);
+      this.setState({
+        recordSecs: e.currentPosition,
+        recordTime: this.audioRecorderPlayer.mmssss(
+          Math.floor(e.currentPosition),
+        ),
+      });
+    });
+    console.log(`uri: ${uri}`);
+  };
+
+  private onPauseRecord = async () => {
+    try {
+      await this.audioRecorderPlayer.pauseRecorder();
+    } catch (err) {
+      console.log('pauseRecord', err);
+    }
+  };
+
+  private onResumeRecord = async () => {
+    await this.audioRecorderPlayer.resumeRecorder();
+  };
+
+  private onStopRecord = async () => {
+    const result = await this.audioRecorderPlayer.stopRecorder();
+    this.audioRecorderPlayer.removeRecordBackListener();
+    this.setState({
+      recordSecs: 0,
+    });
+    console.log(result);
+  };
+export default App;
